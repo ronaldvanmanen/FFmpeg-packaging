@@ -138,6 +138,10 @@
           "type": "string",
           "description": "Specify the NuGet package's reposity URL"
         },
+        "VcpkgBaseline": {
+          "type": "string",
+          "description": "Specify which baseline to use"
+        },
         "VcpkgBinarySources": {
           "type": "array",
           "description": "Specify the source(s) to use for binary caching",

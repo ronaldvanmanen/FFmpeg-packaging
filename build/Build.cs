@@ -25,7 +25,10 @@ class Build : NukeBuild
     readonly string VcpkgPackageName = "ffmpeg";
 
     [Parameter("Specify which version of the specified package to install.")]
-    readonly string VcpkgPackageVersion = "4.4.4";
+    readonly string VcpkgPackageVersion = "7.1#1";
+
+    [Parameter("Specify which baseline to use.")]
+    readonly string VcpkgBaseline = "cf035d9916a0a23042b41fcae7ee0386d245af08";
 
     [Parameter("Specify whether the default features of the specified package should be installed or not.")]
     readonly bool VcpkgDefaultFeatures = true;
@@ -34,7 +37,7 @@ class Build : NukeBuild
     readonly string[] VcpkgFeatures = [];
 
     [Parameter("Specify the target architecture triplet(s).", Separator = ",")]
-    readonly string[] VcpkgTriplets = [];
+    readonly string[] VcpkgTriplets = [ "linux-x64", "win-x64", "win-x86" ];
 
     [Parameter("Specify the source(s) to use for binary caching.", Separator = ";")]
     readonly string[] VcpkgBinarySources = [];
@@ -43,7 +46,10 @@ class Build : NukeBuild
     readonly AbsolutePath[] VcpkgOverlayPorts = [];
 
     [Parameter("Specify the path(s) to containing overlay triplets.", Separator = ";")]
-    readonly AbsolutePath[] VcpkgOverlayTriplets = [];
+    readonly AbsolutePath[] VcpkgOverlayTriplets =
+    [
+        RootDirectory / "vcpkg-triplets"
+    ];
 
     [Parameter("Specify the NuGet package identifier.")]
     readonly string NuGetPackageID = "FFmpeg";
@@ -70,13 +76,35 @@ class Build : NukeBuild
 
     static readonly IEnumerable<string> BuildDependenciesForLinux =
     [
+        "autoconf",
+        "autoconf-archive",
+        "automake",
+        "bison",
+        "build-essential",
+        "curl",
+        "gcc-mingw-w64-x86-64",
+        "g++-mingw-w64-x86-64",
+        "libegl1-mesa-dev",
         "libgl-dev",
         "libglfw3-dev",
+        "libtool",
+        "libwayland-dev",
+        "libxkbcommon-dev",
+        "libx11-dev",
+        "libxi-dev",
+        "libxext-dev",
+        "libxtst-dev",
+        "mesa-common-dev",
+        "meson",
+        "mingw-w64",
         "nasm",
-        "curl",
-        "zip",
+        "python3",
+        "python3-pip",
+        "python3-venv",
+        "tar",
         "unzip",
-        "tar"
+        "yasm",
+        "zip"
     ];
 
     IEnumerable<NuGetFeedSettings> NuGetFeeds
@@ -150,9 +178,9 @@ class Build : NukeBuild
     string GetDotNetRuntimeID(string vcpkgTriplet) =>
         vcpkgTriplet switch
         {
-            "x64-linux-dynamic-release" => "linux-x64",
-            "x64-windows-release" => "win-x64",
-            "x86-windows-release" => "win-x86",
+            "linux-x64" => "linux-x64",
+            "win-x64" => "win-x64",
+            "win-x86" => "win-x86",
             _ => throw new NotSupportedException($"The vcpkg triplet `{vcpkgTriplet} is not yet supported.")
         };
 
@@ -182,13 +210,6 @@ class Build : NukeBuild
 
     AbsolutePath GetVcpkgInstallDirectory(string vcpkgTriplet) =>
         GetVcpkgInstallRootDirectory(vcpkgTriplet) / vcpkgTriplet;
-
-    string GetVcpkgBaseline()
-    {
-        var outputLines = Git("submodule status vcpkg");
-        var outputLine = outputLines.First();
-        return outputLine.Text.Trim().Split(' ')[0];
-    }
 
     [UsedImplicitly]
     Target Clean => _ => _
@@ -226,7 +247,7 @@ class Build : NukeBuild
                             ["version"] = VcpkgPackageVersion
                         }
                     },
-                    ["builtin-baseline"] = GetVcpkgBaseline()
+                    ["builtin-baseline"] = VcpkgBaseline
                 }
             );
 
@@ -332,7 +353,7 @@ class Build : NukeBuild
                 $"--x-buildtrees-root={vcpkgBuildtreesRootDirectory}",
                 $"--x-install-root={vcpkgInstallRootDirectory}",
                 $"--x-packages-root={vcpkgPackagesRootDirectory}",
-                $"--clean-after-build",
+                //$"--clean-after-build",
                 $"--disable-metrics",
             };
 
